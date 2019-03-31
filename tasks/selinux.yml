@@ -1,0 +1,20 @@
+---
+
+- name: LINEINFILE | Check if selinux is installed and enabled
+  become: true
+  become_user: root
+  lineinfile:
+    path: /etc/sysconfig/selinux
+    line: 'SELINUX=enabled'
+    state: present
+  check_mode: true
+  ignore_errors: true
+  changed_when: false
+  register: task_result
+
+- set_fact:
+    selinux_enabled: false
+
+- set_fact:
+    selinux_enabled: true
+  when: "task_result.msg is defined and 'replaced' in task_result.msg and not task_result.failed"

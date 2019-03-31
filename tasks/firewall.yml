@@ -1,0 +1,31 @@
+---
+
+- name: COMMAND | Check if firewalld is running
+  become: true
+  become_user: root
+  command: 'firewall-cmd --state'
+  register: task_result
+  ignore_errors: true
+  changed_when: false
+
+- set_fact:
+    firewalld_enabled: false
+
+- set_fact:
+    firewalld_enabled: true
+  when: "task_result.stdout is defined and task_result.stdout == 'running' and not task_result.failed"
+
+- name: COMMAND | Check if ufw is running
+  become: true
+  become_user: root
+  command: 'ufw status'
+  register: task_result
+  ignore_errors: true
+  changed_when: false
+
+- set_fact:
+    ufw_enabled: false
+
+- set_fact:
+    ufw_enabled: true
+  when: "task_result.stdout is defined and 'Status: active' in task_result.stdout and not task_result.failed"

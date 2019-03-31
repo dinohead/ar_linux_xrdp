@@ -1,0 +1,58 @@
+---
+# ========================
+# File tasks/main.yml
+#
+# ========================
+
+- name: Check if selinux is enabled
+  include: selinux.yml
+
+- name: Check if firewall is enabled
+  include: firewall.yml
+
+- name: APT | Install xrdp
+  become: true
+  become_user: root
+  apt:
+    update_cache: true
+    name: "xrdp"
+    state: latest
+  when: ansible_os_family == 'Debian'
+
+- name: PLAY | Install Packages
+  become: true
+  become_user: root
+  yum:
+    name:
+      - xrdp
+      - tigervnc-server
+    state: present
+    update_cache: yes
+  when: ansible_os_family == 'RedHat'
+
+- name: SYSTEMD | Start and enable xrdp
+  become: true
+  become_user: root
+  systemd:
+    name: xrdp
+    state: started
+    enabled: true
+
+- name: FIREWALLD | Ensure Port 3389 enabled in firewall
+  become: true
+  become_user: root
+  firewalld:
+    port: 3389/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: firewalld_enabled
+
+- name: COMMAND | Configure SELinux context
+  become: true
+  become_user: root
+  command: "{{ item }}"
+  with_items:
+    - chcon --type=bin_t /usr/sbin/xrdp
+    - chcon --type=bin_t /usr/sbin/xrdp-sesman
+  when: selinux_enabled
