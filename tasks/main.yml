@@ -19,16 +19,50 @@
     state: latest
   when: ansible_os_family == 'Debian'
 
-- name: PLAY | Install Packages
+- name: YUM | Ensure xrdp is installed and up-to-date on RHEL 7
   become: true
   become_user: root
   yum:
-    name:
+    name: 
       - xrdp
-      - tigervnc-server
+      - xorgxrdp
     state: present
-    update_cache: yes
-  when: ansible_os_family == 'RedHat'
+    update_cache: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python
+  when:
+    - "ansible_distribution_major_version | int <= 7"
+    - "ansible_os_family == 'RedHat'"
+    
+- name: YUM | Ensure xrdp is installed and up-to-date on RHEL 8
+  become: true
+  become_user: root
+  yum:
+    name: 
+      - xrdp
+      - xorgxrdp
+    state: present
+    update_cache: true
+  when:
+    - "ansible_distribution_major_version | int > 7"
+    - "ansible_os_family == 'RedHat'"
+
+- name: PLAY | Enable Xorg
+  become: true
+  become_user: root
+  blockinfile:
+    path: /etc/xrdp/xrdp.ini
+    insertbefore: '\[Xvnc\]'
+    marker: " "
+    block: |
+      [Xorg]
+      name=Xorg
+      lib=libxup.so
+      username=ask
+      password=ask
+      ip=127.0.0.1
+      port=-1
+      code=20
 
 - name: SYSTEMD | Start and enable xrdp
   become: true
@@ -38,7 +72,7 @@
     state: started
     enabled: true
 
-- name: FIREWALLD | Ensure Port 3389 enabled in firewall
+- name: FIREWALLD | Ensure Port 3389 enabled in firewall on 7
   become: true
   become_user: root
   firewalld:
@@ -46,7 +80,23 @@
     permanent: true
     state: enabled
     immediate: true
-  when: firewalld_enabled
+  vars:
+    ansible_python_interpreter: /usr/bin/python
+  when: 
+    - firewalld_enabled
+    - "ansible_distribution_major_version | int <= 7"
+
+- name: FIREWALLD | Ensure Port 3389 enabled in firewall on 8
+  become: true
+  become_user: root
+  firewalld:
+    port: 3389/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: 
+    - firewalld_enabled
+    - "ansible_distribution_major_version | int > 7"
 
 - name: COMMAND | Configure SELinux context
   become: true
